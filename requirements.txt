@@ -1,0 +1,10 @@
+pandas
+google-cloud
+google-cloud-bigquery
+facebook-business
+pyarrow
+fastapi
+uvicorn
+google-cloud-aiplatform
+google-auth
+requests
