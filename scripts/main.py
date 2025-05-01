@@ -10,7 +10,8 @@ import pathlib
 sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent))
 
 # Importa la función main desde run_pipeline.py
-from scripts.run_pipeline import run_pipeline
+from scripts.run_pipeline import run_pipeline as pipeline_main 
+
 
 app = FastAPI()
 
@@ -22,7 +23,7 @@ def root():
 def run_pipeline():
     print("🔥 [run_pipeline] started")
     try:
-        run_pipeline()
+        pipeline_main()
         return {"status": "✅ Pipeline executed successfully"}
     except Exception as e:
         print("❌ Error in run_pipeline:", e)

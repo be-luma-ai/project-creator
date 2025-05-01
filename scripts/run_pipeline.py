@@ -1,4 +1,4 @@
-# scripts/meta_ads_main.py
+# scripts/run_pipeline.py
 
 import sys
 import os
