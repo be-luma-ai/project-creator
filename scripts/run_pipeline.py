@@ -44,9 +44,9 @@ def run_pipeline():
 
         # Define all flags ON (you can toggle specific ones to False if needed)
         data_flags = {
-            "account_performance": False,
-            "campaign_performance": True,
-            "adset_performance": True,
+            "account_performance": True,
+            "campaign_performance": False,
+            "adset_performance": False,
             "ad_performance": False,
             "account_recommendations": False,
             "adset_recommendations": False,
