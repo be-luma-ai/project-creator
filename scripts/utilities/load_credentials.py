@@ -1,8 +1,8 @@
 import json
 import logging
 from typing import Dict, List, Any
-from google.cloud import secretmanager, storage
-
+from google.cloud import secretmanager_v1 as secretmanager
+from google.cloud import storage
 logger = logging.getLogger(__name__)
 
 # 📌 1. Meta access token desde Secret Manager

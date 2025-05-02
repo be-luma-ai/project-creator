@@ -1,10 +1,21 @@
+# Core
 pandas
-google-cloud
-google-cloud-bigquery
-facebook-business
 pyarrow
-fastapi
-uvicorn
+requests
+
+# Google Cloud APIs
+google-cloud-bigquery
+google-cloud-storage
+google-cloud-secret-manager
 google-cloud-aiplatform
 google-auth
-requests
+
+# Meta Ads
+facebook-business==17.0.0
+
+# FastAPI + server
+fastapi
+uvicorn
+
+
+
