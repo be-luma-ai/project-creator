@@ -11,7 +11,8 @@ def load_meta_access_token() -> str:
         client = secretmanager.SecretManagerServiceClient()
         name = "projects/be-luma-infra/secrets/meta-access-token/versions/latest"
         response = client.access_secret_version(request={"name": name})
-        token = response.payload.data.decode("utf-8")
+        token_raw = response.payload.data.decode("utf-8")
+        token = json.loads(token_raw)["ACCESS_TOKEN"]
         logger.info("🔑 Meta access token loaded from Secret Manager.")
         return token
     except Exception as e:
