@@ -3,7 +3,7 @@ import json
 import logging
 from typing import List, Dict
 
-from utilities.meta_ads_api import call_meta_api
+from scripts.utilities.meta_ads_api import call_meta_api
 
 logger = logging.getLogger(__name__)
 
@@ -50,19 +50,26 @@ def get_ads_df(ad_accounts: List[Dict[str, str]]) -> pd.DataFrame:
                     "account_id": acc_id,
                     "account_name": acc_name,
                     "currency": currency,
+
                     "campaign_id": ad.get("campaign_id", ""),
+                    "campaign_name": ad.get("campaign_name", ""),
                     "adset_id": ad.get("adset_id", ""),
+                    "adset_name": ad.get("adset_name", ""),
+
                     "created_time": ad.get("created_time", ""),
                     "updated_time": ad.get("updated_time", ""),
                     "ad_active_time": ad.get("ad_active_time", ""),
                     "ad_schedule_start_time": ad.get("ad_schedule_start_time", ""),
                     "ad_schedule_end_time": ad.get("ad_schedule_end_time", ""),
+
                     "configured_status": ad.get("configured_status", ""),
                     "effective_status": ad.get("effective_status", ""),
                     "status": ad.get("status", ""),
+
                     "bid_amount": float(ad.get("bid_amount", 0)) if ad.get("bid_amount") else None,
                     "conversion_domain": ad.get("conversion_domain", ""),
                     "preview_shareable_link": ad.get("preview_shareable_link", ""),
+
                     "creative": json.dumps(ad.get("creative", {}), default=str),
                     "creative_asset_groups_spec": json.dumps(ad.get("creative_asset_groups_spec", {}), default=str),
                     "ad_review_feedback": json.dumps(ad.get("ad_review_feedback", {}), default=str),

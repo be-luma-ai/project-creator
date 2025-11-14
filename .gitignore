@@ -11,10 +11,16 @@ venv/
 # Archivos sensibles
 .env
 *.json
+!package.json
+!package-lock.json
 
 # Configs locales
 credentials/
 clients/
+
+# Test files (opcional - puedes comentar si quieres subirlos)
+test_creatives_storage.py
+run_with_storage.sh
 
 # Archivos de sistema
 .DS_Store

@@ -44,18 +44,63 @@ meta-ads/
 ```
 
 ⚙️ How It Works
-1.Client Configuration\*\*
-Define clients in configs/clients.json: [ { "slug": "GAMA", "business_id": "1234567890", "service_account": "path/to/creds.json" } ]
 
-2. \*_Run Confign_
-   Dates are generated dynamically via get_run_config().
+## Architecture
 
-{ "since_date": "2025-03-21", "yesterday": "2025-03-25", ... }
+**Pipeline Execution Project**: `be-luma-infra`  
+**Data Destination**: Each client's own GCP project
 
-3. Pipeline Execution
-   The main script runs the pipeline for each client: python scripts/meta_ads_main.py
+### Service Account Strategy
 
-Each step extracts: • Ad accounts • Campaigns / Ad Sets / Ads • Recommendations (account, adset, ad) • Performance (daily insights) • Performance by breakdowns (daily insights) • Change history (optional)
+The pipeline uses **one service account per client**, stored in Secret Manager of `be-luma-infra`:
+
+- **Secret Name Format**: `client-{slug}-sa`
+- **Location**: `projects/be-luma-infra/secrets/client-{slug}-sa/versions/latest`
+- **Service Account Project**: Each SA belongs to the client's GCP project (e.g., `gama-454419`)
+- **BigQuery Target**: Data is uploaded to `{client_project_id}.meta_ads.{table_name}_{date}`
+
+### Why Separate Service Accounts?
+
+✅ **Security**: Isolated access per client  
+✅ **Scalability**: Easy to add/remove clients  
+✅ **Compliance**: Each client controls their own project  
+✅ **Maintainability**: One secret per client in Secret Manager
+
+### Data Flow
+
+1. **Client Configuration** (Cloud Storage)
+   - JSON stored in `gs://clients-config/clients.json`
+   - Format: `[{"slug": "gama", "business_id": "1518026538611779"}, ...]`
+
+2. **Meta API Extraction** (`be-luma-infra`)
+   - Uses Meta access token from Secret Manager
+   - Extracts: `ads`, `ad_creatives`, `ad_performance`
+
+3. **BigQuery Upload** (Client's Project)
+   - Uses client's service account from Secret Manager
+   - Uploads to client's own GCP project
+   - Dataset: `meta_ads`
+   - Tables: `{table_name}_{YYYYMMDD}`
+
+### Run Config
+Dates are generated dynamically via `get_run_config()`:
+```json
+{
+  "since_date": "2025-09-03",
+  "yesterday": "20251002",
+  ...
+}
+```
+
+### Pipeline Execution
+```bash
+python -c "from scripts.run_pipeline import run_pipeline; run_pipeline()"
+```
+
+**Extracted Data**:
+- ✅ `ads` - Ad metadata
+- ✅ `ad_creatives` - Creative metadata  
+- ✅ `ad_performance` - Daily performance insights with `account_name` and `ad_name`
 
 🐛 Logging
 

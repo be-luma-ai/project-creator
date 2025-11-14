@@ -4,15 +4,16 @@ import logging
 import pandas as pd
 from typing import List, Dict, Any
 
-from utilities.meta_ads_api import call_meta_api
-from utilities.actions_extractor import extract_action_value
+from scripts.utilities.meta_ads_api import call_meta_api
+from scripts.utilities.actions_extractor import extract_action_value
 
 logger = logging.getLogger(__name__)
 
+
 AD_INSIGHTS_FIELDS = [
-    "date_start", "ad_id", "adset_id", "campaign_id", "spend", "impressions", "reach", "clicks",
+    "date_start", "ad_id", "ad_name", "adset_id","adset_name", "campaign_id","campaign_name", "spend", "impressions", "reach", "clicks",
     "unique_clicks", "unique_inline_link_clicks", "actions", "action_values",
-    "quality_ranking", "engagement_rate_ranking", "conversion_rate_ranking", "relevance_score"
+    "quality_ranking", "engagement_rate_ranking", "conversion_rate_ranking"
 ]
 
 def get_ad_performance_df(ad_accounts: List[Dict[str, Any]], run_config: Dict[str, Any]) -> pd.DataFrame:
@@ -56,9 +57,13 @@ def get_ad_performance_df(ad_accounts: List[Dict[str, Any]], run_config: Dict[st
             for row in insights:
                 all_data.append({
                     "account_id": account_id,
+                    "account_name": acc.get("account_name", ""),
                     "ad_id": row.get("ad_id", ""),
+                    "ad_name": row.get("ad_name", ""),
                     "adset_id": row.get("adset_id", ""),
+                    "adset_name": row.get("adset_name", ""),
                     "campaign_id": row.get("campaign_id", ""),
+                    "campaign_name": row.get("campaign_name", ""),
                     "date": row.get("date_start", ""),
                     "spend": float(row.get("spend", 0)),
                     "impressions": int(row.get("impressions", 0)),
@@ -85,12 +90,12 @@ def get_ad_performance_df(ad_accounts: List[Dict[str, Any]], run_config: Dict[st
                     "quality_ranking": row.get("quality_ranking", ""),
                     "engagement_rate_ranking": row.get("engagement_rate_ranking", ""),
                     "conversion_rate_ranking": row.get("conversion_rate_ranking", ""),
-                    "relevance_score": row.get("relevance_score", "")
                 })
 
         except Exception as e:
             logger.warning(f"⚠️ Failed to fetch ad insights for account {account_id}: {e}", exc_info=True)
 
     df = pd.DataFrame(all_data)
+    
     logger.info(f"📈 Total ad performance rows loaded: {len(df)}")
     return df

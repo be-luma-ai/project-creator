@@ -17,15 +17,19 @@ def upload_multiple_dataframes(
 ) -> None:
     """
     Uploads multiple DataFrames to BigQuery with table suffix.
+    
+    The BigQuery client determines the target project (from service account project_id).
+    Data is uploaded to: {project_id}.{dataset_id}.{table_id}_{table_suffix}
 
     Args:
-        bq_client (bigquery.Client): BigQuery client instance.
-        dataset_id (str): BigQuery dataset name.
-        dataframes (dict): Table name -> DataFrame.
+        bq_client (bigquery.Client): BigQuery client instance (authenticated with client's service account).
+        dataset_id (str): BigQuery dataset name (e.g., 'meta_ads').
+        dataframes (dict): Table name -> DataFrame mapping.
         table_suffix (str): Suffix to append to each table name (e.g., '20250325').
         write_mode (Literal): Write mode for BigQuery.
     """
-    logger.info(f"🚀 Starting upload of {len(dataframes)} tables to BigQuery...")
+    project_id = bq_client.project
+    logger.info(f"🚀 Starting upload of {len(dataframes)} tables to BigQuery project: {project_id}")
 
     for table_id, df in dataframes.items():
         full_table_id = f"{table_id}_{table_suffix}"
@@ -70,10 +74,11 @@ def _upload_single_table(
 
     try:
         num_rows = len(df)
-        logger.info(f"⏫ Uploading {num_rows} rows to {dataset_id}.{table_id}...")
+        project_id = client.project
+        logger.info(f"⏫ Uploading {num_rows} rows to {project_id}.{dataset_id}.{table_id}...")
         load_job = client.load_table_from_dataframe(df, table_ref, job_config=job_config)
         load_job.result()  # Wait until job is complete
-        logger.info(f"✅ Upload successful: {dataset_id}.{table_id} ({num_rows} rows)")
+        logger.info(f"✅ Upload successful: {project_id}.{dataset_id}.{table_id} ({num_rows} rows)")
     except GoogleCloudError as e:
         logger.error(f"❌ Failed to upload {dataset_id}.{table_id}: {e}", exc_info=True)
         raise
