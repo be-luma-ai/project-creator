@@ -24,3 +24,7 @@ run_with_storage.sh
 
 # Archivos de sistema
 .DS_Store
+
+# Cloud Functions y Frontend (no subir)
+cloud_functions/
+frontend/
