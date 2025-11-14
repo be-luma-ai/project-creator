@@ -44,9 +44,17 @@ def call_meta_api(
     query = {"fields": ",".join(fields), **params}
     path = f"{object_id}/{edge}" if edge else object_id
 
-    # Get access token from session
+    # Get access token from session, or load it if not initialized
     api = FacebookAdsApi.get_default_api()
-    access_token = api._session.access_token
+    if api is None or not hasattr(api, '_session') or api._session is None:
+        # API not initialized, load token directly
+        from scripts.utilities.load_credentials import load_meta_access_token
+        access_token = load_meta_access_token()
+        # Initialize for future calls
+        FacebookAdsApi.init(access_token=access_token)
+    else:
+        access_token = api._session.access_token
+    
     base_url = f"https://graph.facebook.com/v23.0/{path}"
 
     while attempt < max_retries:
