@@ -50,10 +50,14 @@ def test_token():
     try:
         from scripts.utilities.load_credentials import load_meta_access_token
         from scripts.utilities.meta_ads_api import call_meta_api
+        from facebook_business.api import FacebookAdsApi
         
         # Load token
         access_token = load_meta_access_token()
         print(f"🔑 Token loaded: {access_token[:20]}...")
+        
+        # Initialize Facebook API (required before calling call_meta_api)
+        FacebookAdsApi.init(access_token=access_token)
         
         # Test with a simple API call
         result = call_meta_api(
