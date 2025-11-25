@@ -1,137 +1,60 @@
-# meta-ads-pipeline
+# Firestore → Cloud Run Function (Client Provisioning)
 
-A modular and extensible data pipeline for extracting, transforming, and loading Meta Ads (Facebook Ads) data into Google BigQuery.
+This function listens to `clients/{clientId}` documents and automatically:
 
-🚀 Overview
-This project automates the daily extraction of performance data, recommendations, and account structures from the Meta Ads API. The data is stored in BigQuery for further analysis, visualization, or AI-driven insights.
+1. Creates a dedicated GCP project for the client under the `client-projects` folder (`CLIENT_FOLDER_ID`).
+2. Links the billing account (optional) and enables the APIs required by the Meta Ads pipeline.
+3. Creates the `meta_ads` BigQuery dataset inside the client's project.
+4. Updates the `gs://clients-config/clients.json` manifest so the pipeline discovers the new client.
 
-🧱 Tech Stack
-Python 3.10+
-Meta Ads API (Facebook Graph API)
-Google Cloud Platform
-BigQuery
-Cloud Run (optional for deployment)
-OpenAI API (optional, for AI Agents)
-Logging via logging module
-📁 Project Structure
+Everything runs on Cloud Functions (Gen 2), which internally executes on Cloud Run—no changes are needed in the Python `scripts/` directory.
 
-```text
-meta-ads/
-├── clients/                  # Client-specific config
-├── credentials/              # Global credentials (ignored via .gitignore)
-│   ├── service_accounts/
-│   └── meta_ads/
-├── scripts/                  # Entrypoint scripts
-│   ├── main.py               # FastAPI server for Cloud Run
-│   ├── run_pipeline.py       # Wraps the pipeline
-│   └── meta_ads_main.py      # Actual pipeline logic
-├── utilities/                # Shared utility modules
-│   ├── logger_setup.py
-│   ├── load_credentials.py
-│   ├── run_config.py
-│   ├── run_for_client.py
-│   └── bigquery_uploader.py
-├── modules/                  # ETL modules
-│   ├── settings/             # Ad accounts, campaigns, ad sets, creatives
-│   ├── performance/
-│   │   ├── main/             # Campaign performance
-│   │   └── breakdowns/
-│   ├── recommendations/
-│   └── change_history/       # (future)
-├── tests/                    # pytest-compatible unit tests
-├── requirements.txt
-└── README.md
-```
+---
 
-⚙️ How It Works
+## Event Payload
 
-## Architecture
+- Trigger: Firestore `google.cloud.firestore.document.v1.created`
+- Resource: `projects/be-luma-infra/databases/(default)/documents/clients/{clientId}`
+- Required Firestore fields:
+  - `name`
+  - `slug`
+  - `business_id`
+  - `project_id`
+  - `google_ads_customer_id` (can be empty string)
 
-**Pipeline Execution Project**: `be-luma-infra`  
-**Data Destination**: Each client's own GCP project
+---
 
-### Service Account Strategy
+## Environment Variables
 
-The pipeline uses **one service account per client**, stored in Secret Manager of `be-luma-infra`:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `CLIENT_FOLDER_ID` | `555317256759` | Folder where new projects are created |
+| `CLIENTS_CONFIG_BUCKET` | `clients-config` | Bucket storing `clients.json` |
+| `CLIENTS_CONFIG_FILENAME` | `clients.json` | Manifest file name |
+| `DATASET_ID` | `meta_ads` | Dataset created inside each project |
+| `BILLING_ACCOUNT_ID` | (empty) | Billing account to link (optional) |
 
-- **Secret Name Format**: `client-{slug}-sa`
-- **Location**: `projects/be-luma-infra/secrets/client-{slug}-sa/versions/latest`
-- **Service Account Project**: Each SA belongs to the client's GCP project (e.g., `gama-454419`)
-- **BigQuery Target**: Data is uploaded to `{client_project_id}.meta_ads.{table_name}_{date}`
+---
 
-### Why Separate Service Accounts?
+## IAM / Service Account
 
-✅ **Security**: Isolated access per client  
-✅ **Scalability**: Easy to add/remove clients  
-✅ **Compliance**: Each client controls their own project  
-✅ **Maintainability**: One secret per client in Secret Manager
+Deploy the function with a service account that has, at minimum:
 
-### Data Flow
+- `roles/resourcemanager.projectCreator`
+- `roles/resourcemanager.folderViewer` (for the target folder)
+- `roles/serviceusage.serviceUsageAdmin`
+- `roles/serviceusage.apiKeysAdmin` (optional but useful)
+- `roles/billing.projectManager` (if linking billing)
+- `roles/storage.objectAdmin` on the `clients-config` bucket
+- `roles/bigquery.admin` on the newly created projects (or grant at runtime via org policies)
 
-1. **Client Configuration** (Cloud Storage)
-   - JSON stored in `gs://clients-config/clients.json`
-   - Format: `[{"slug": "gama", "business_id": "1518026538611779"}, ...]`
+Example service account: `project-creator@be-luma-infra.iam.gserviceaccount.com`
 
-2. **Meta API Extraction** (`be-luma-infra`)
-   - Uses Meta access token from Secret Manager
-   - Extracts: `ads`, `ad_creatives`, `ad_performance`
+See `PERMISSIONS.md` for ready-to-run `gcloud`/`gsutil` commands that assign these roles.
 
-3. **BigQuery Upload** (Client's Project)
-   - Uses client's service account from Secret Manager
-   - Uploads to client's own GCP project
-   - Dataset: `meta_ads`
-   - Tables: `{table_name}_{YYYYMMDD}`
+---
 
-### Run Config
-Dates are generated dynamically via `get_run_config()`:
-```json
-{
-  "since_date": "2025-09-03",
-  "yesterday": "20251002",
-  ...
-}
-```
+## Deployment
 
-### Pipeline Execution
-```bash
-python -c "from scripts.run_pipeline import run_pipeline; run_pipeline()"
-```
+See `DEPLOY.md` for an end-to-end `gcloud` command (Gen 2, Python 3.11). Update the env vars and service account before deploying.
 
-**Extracted Data**:
-- ✅ `ads` - Ad metadata
-- ✅ `ad_creatives` - Creative metadata  
-- ✅ `ad_performance` - Daily performance insights with `account_name` and `ad_name`
-
-🐛 Logging
-
-All logs are stored in meta_ads_pipeline.log and printed to the terminal:
-
-2025-03-26 18:24:25 - INFO - meta_ads_pipeline - ✅ Client GAMA processed successfully.
-
-🧪 Testing
-
-You can run a test client using:
-
-python scripts/meta_ads_main.py --client TEST
-
-Unit testing not implemented yet – recommended libraries: • pytest • unittest.mock for mocking Meta API calls
-
-⸻
-
-📦 Deployment Suggestions
-
-You can deploy this project to: • Cloud Run + Scheduler (daily execution) • Cloud Composer (managed Airflow) • Docker + cron + GCP SA
-
-⸻
-
-📄 License
-
-MIT License. © 2025 be-luma.com
-
-⸻
-
-✨ Contact
-
-For support or questions:
-📬 mateo@be-luma.com
-🌐 https://be-luma.com
